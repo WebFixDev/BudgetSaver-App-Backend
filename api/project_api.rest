@@ -1,0 +1,114 @@
+### ====================================
+### PROJECT MANAGEMENT API
+### ====================================
+
+### BASE URL
+@baseUrl =http://localhost:5000/api
+
+@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5MzkxNmMwMDMyODU5NmRkZDEzZWM1NyIsInJvbGUiOiJhZ2VudCIsImlhdCI6MTc2NTM0OTExNywiZXhwIjoxNzY1OTUzOTE3fQ.tAKZRvfUqlC3KUlq5xDD9kxr4k5vCXbNKhhMNCodpqI
+### ====================================
+### 1. GET ALL PROJECTS (with filtering)
+### ====================================
+GET {{baseUrl}}/projects
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+### Get projects with pagination
+GET {{baseUrl}}/projects?page=1&limit=10
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+### Get projects with status filter
+GET {{baseUrl}}/projects?status=ACTIVE
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+### Get projects with search
+GET {{baseUrl}}/projects?search=office
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+### Get projects with multiple filters
+GET {{baseUrl}}/projects?status=ACTIVE&createdBy=507f1f77bcf86cd799439011&sortBy=createdAt&sortOrder=desc
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+### ====================================
+### 2. GET PROJECT STATISTICS
+### ====================================
+GET {{baseUrl}}/projects/stats
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+### ====================================
+### 3. GET PROJECT BY ID
+### ====================================
+GET {{baseUrl}}/projects/6939186bca254c1408711804
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+
+### ====================================
+### 4. GET PROJECT BY CODE
+### ====================================
+GET {{baseUrl}}/projects/code/PRJ-2023-001
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+
+### ====================================
+### 5. CREATE NEW PROJECT
+### ====================================
+POST {{baseUrl}}/projects
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "title": "New Office Building Construction",
+  "code": "PRJ-2023-111",
+  "projectImage": "https://res.cloudinary.com/dbfc6vcze/image/upload/v1765354020/images/ftycaekzlbkrwcbiiupe.jpg",
+  "description": "Construction of new corporate headquarters",
+  "initialBudget": 5000000,
+  "status": "ACTIVE",
+  "startDate": "2023-06-01",
+  "endDate": "2023-12-31"
+}
+
+### ====================================
+### 6. UPDATE PROJECT
+### ====================================
+PUT {{baseUrl}}/projects/6939221a70c71fa106384676
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "title": "Updated Project Title",
+  "description": "Updated project description with more details",
+  "status": "COMPLETED",
+  "endDate": "2023-12-15",
+  "initialBudget": 5500000
+}
+
+### ====================================
+### 8. DELETE PROJECT
+### ====================================
+DELETE {{baseUrl}}/projects/6939221a70c71fa106384676
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+
+### ====================================
+### 12. COMPLEX FILTERING EXAMPLES
+### ====================================
+
+### Combined search with pagination
+GET {{baseUrl}}/projects?search=construction&status=ACTIVE&page=1&limit=5&sortBy=initialBudget&sortOrder=desc
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+### Filter by date range (using code as reference)
+GET {{baseUrl}}/projects?status=ACTIVE
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+

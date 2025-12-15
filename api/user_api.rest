@@ -1,0 +1,340 @@
+### ====================================
+### COMPLETE API TESTING FILE
+### ====================================
+
+### BASE URL
+@baseUrl = http://localhost:5000/api
+@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5MzkxNmMwMDMyODU5NmRkZDEzZWM1NyIsInJvbGUiOiJhZ2VudCIsImlhdCI6MTc2NTM0OTExNywiZXhwIjoxNzY1OTUzOTE3fQ.tAKZRvfUqlC3KUlq5xDD9kxr4k5vCXbNKhhMNCodpqI
+@adminToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5MzkxNmMwMDMyODU5NmRkZDEzZWM1NyIsInJvbGUiOiJhZ2VudCIsImlhdCI6MTc2NTM0OTExNywiZXhwIjoxNzY1OTUzOTE3fQ.tAKZRvfUqlC3KUlq5xDD9kxr4k5vCXbNKhhMNCodpqI
+
+### ====================================
+### 1. AUTH ROUTES
+### ====================================
+
+### Register User
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "name": "John Doe",
+  "email": "john@example.com",
+  "password": "password123",
+  "phone": "+1234567890",
+  "role": "agent"
+}
+
+### Login User
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "john@example.com",
+  "password": "password123"
+}
+
+### ====================================
+### 2. USER ROUTES (CURRENT USER)
+### ====================================
+
+### Get current user profile
+GET {{baseUrl}}/users/me
+Authorization: Bearer {{token}}
+
+### Update current user profile
+PUT {{baseUrl}}/users/me
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "FAISAL",
+  "phone": "+1234567890",
+  "bio": "Updated bio information",
+  "address": "123 Main Street",
+  "gender": "male",
+  "dateOfBirth": "1990-01-01"
+}
+
+### ====================================
+### 3. PROJECT ROUTES
+### ====================================
+
+### Get all projects
+GET {{baseUrl}}/projects
+Authorization: Bearer {{token}}
+
+### Create new project
+POST {{baseUrl}}/projects
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "title": "Office Building Construction",
+  "code": "PRJ-001",
+  "description": "Construction of new corporate office",
+  "initialBudget": 5000000,
+  "status": "ACTIVE",
+  "startDate": "2024-01-01",
+  "endDate": "2024-12-31"
+}
+
+### Get project by ID
+@projectId = 507f1f77bcf86cd799439011
+GET {{baseUrl}}/projects/{{projectId}}
+Authorization: Bearer {{token}}
+
+### Get project by code
+GET {{baseUrl}}/projects/code/PRJ-001
+Authorization: Bearer {{token}}
+
+### Update project
+PUT {{baseUrl}}/projects/{{projectId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "title": "Updated Project Title",
+  "status": "COMPLETED",
+  "description": "Updated project description"
+}
+
+### Delete project
+DELETE {{baseUrl}}/projects/{{projectId}}
+Authorization: Bearer {{token}}
+
+### Get project statistics
+GET {{baseUrl}}/projects/stats
+Authorization: Bearer {{token}}
+
+### Update project status
+PATCH {{baseUrl}}/projects/{{projectId}}/status
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "status": "ON_HOLD"
+}
+
+### ====================================
+### 4. PARTY ROUTES (Under Projects)
+### ====================================
+
+### Create party for project
+POST {{baseUrl}}/projects/{{projectId}}/parties
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "ABC Construction",
+  "partyType": "VENDOR",
+  "description": "Main construction contractor",
+  "contact": {
+    "email": "abc@construction.com",
+    "phone": "+1234567890",
+    "address": "123 Construction Street"
+  }
+}
+
+### Get all parties for project
+GET {{baseUrl}}/projects/{{projectId}}/parties
+Authorization: Bearer {{token}}
+
+### Get parties with filters
+GET {{baseUrl}}/projects/{{projectId}}/parties?partyType=CLIENT
+Authorization: Bearer {{token}}
+
+GET {{baseUrl}}/projects/{{projectId}}/parties?search=ABC
+Authorization: Bearer {{token}}
+
+GET {{baseUrl}}/projects/{{projectId}}/parties?page=1&limit=5
+Authorization: Bearer {{token}}
+
+### Get party by ID
+@partyId = 507f1f77bcf86cd799439022
+GET {{baseUrl}}/projects/{{projectId}}/parties/{{partyId}}
+Authorization: Bearer {{token}}
+
+### Update party
+PUT {{baseUrl}}/projects/{{projectId}}/parties/{{partyId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "ABC Construction Ltd",
+  "description": "Updated contractor information",
+  "contact": {
+    "email": "info@abcconstruction.com"
+  }
+}
+
+### Delete party
+DELETE {{baseUrl}}/projects/{{projectId}}/parties/{{partyId}}
+Authorization: Bearer {{token}}
+
+### Get party statistics
+GET {{baseUrl}}/projects/{{projectId}}/parties-stats
+Authorization: Bearer {{token}}
+
+### ====================================
+### 5. ASSET ROUTES (Image Upload)
+### ====================================
+
+### Upload profile image
+POST {{baseUrl}}/assets/profile-image
+Authorization: Bearer {{token}}
+Content-Type: multipart/form-data; boundary=boundary123
+
+--boundary123
+Content-Disposition: form-data; name="image"; filename="profile.jpg"
+Content-Type: image/jpeg
+
+< ./test.jpg
+--boundary123--
+
+### ====================================
+### 6. ADMIN USER ROUTES (If you have admin token)
+### ====================================
+
+### Get all users (admin only)
+GET {{baseUrl}}/users
+Authorization: Bearer {{adminToken}}
+
+### Create new user (admin only)
+POST {{baseUrl}}/users
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "name": "New Agent",
+  "email": "newagent@example.com",
+  "phone": "+9876543210",
+  "role": "agent",
+  "gender": "male",
+  "isActive": true
+}
+
+### Get user by ID (admin only)
+@userId = 507f1f77bcf86cd799439033
+GET {{baseUrl}}/users/{{userId}}
+Authorization: Bearer {{adminToken}}
+
+### Update user (admin only)
+PUT {{baseUrl}}/users/{{userId}}
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "name": "Updated User Name",
+  "role": "admin",
+  "isActive": true
+}
+
+### Delete user (admin only)
+DELETE {{baseUrl}}/users/{{userId}}
+Authorization: Bearer {{adminToken}}
+
+### Toggle user status (admin only)
+PATCH {{baseUrl}}/users/{{userId}}/toggle-status
+Authorization: Bearer {{adminToken}}
+
+### Get user statistics (admin only)
+GET {{baseUrl}}/users/stats
+Authorization: Bearer {{adminToken}}
+
+### ====================================
+### 7. TEST SEQUENCE
+### ====================================
+
+### Step 1: Login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@example.com",
+  "password": "admin123"
+}
+
+### Step 2: Create Project (Response me projectId copy karo)
+POST {{baseUrl}}/projects
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "title": "Test Project",
+  "code": "TEST-001",
+  "initialBudget": 100000
+}
+
+### Step 3: Create Party for that project
+### @projectId ko step 2 ke response se update karo
+POST {{baseUrl}}/projects/{{projectId}}/parties
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Test Client",
+  "partyType": "CLIENT",
+  "contact": {
+    "email": "client@test.com"
+  }
+}
+
+### Step 4: Get all parties for project
+GET {{baseUrl}}/projects/{{projectId}}/parties
+Authorization: Bearer {{token}}
+
+### Step 5: Update your profile
+PUT {{baseUrl}}/users/me
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Your New Name",
+  "bio": "Testing the API"
+}
+
+### ====================================
+### 8. ERROR TESTING
+### ====================================
+
+### No authentication
+GET {{baseUrl}}/projects
+
+### Invalid token
+GET {{baseUrl}}/projects
+Authorization: Bearer invalid_token_here
+
+### Invalid project ID
+GET {{baseUrl}}/projects/invalid-id
+Authorization: Bearer {{token}}
+
+### Duplicate project code
+POST {{baseUrl}}/projects
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "title": "Duplicate Project",
+  "code": "TEST-001",
+  "initialBudget": 200000
+}
+
+### Missing required fields
+POST {{baseUrl}}/projects
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "title": "Invalid Project"
+}
+
+### Invalid date format
+POST {{baseUrl}}/projects
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "title": "Test Project",
+  "code": "TEST-002",
+  "startDate": "invalid-date"
+}
+

@@ -1,0 +1,298 @@
+### ====================================
+### PARTY MANAGEMENT API
+### ====================================
+
+### BASE URL
+@baseUrl = http://localhost:5000/api
+@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5MzkxNmMwMDMyODU5NmRkZDEzZWM1NyIsInJvbGUiOiJhZ2VudCIsImlhdCI6MTc2NTM0OTExNywiZXhwIjoxNzY1OTUzOTE3fQ.tAKZRvfUqlC3KUlq5xDD9kxr4k5vCXbNKhhMNCodpqI
+@projectId = 69392ecffe2b4260174b5ecf
+
+### ====================================
+### 1. CREATE PARTY FOR PROJECT
+### ====================================
+
+### Create Client
+POST {{baseUrl}}/projects/{{projectId}}/parties
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "ABC Corporation",
+  "partyType": "CLIENT",
+  "contact": {
+    "email": "abc@example.com",
+    "phone": "+1234567890",
+    "address": "123 Main Street, City"
+  },
+  "status": "ACTIVE"
+}
+
+### Create Vendor
+POST {{baseUrl}}/projects/{{projectId}}/parties
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "XYZ Construction",
+  "partyType": "VENDOR",
+  "contact": {
+    "email": "xyz@example.com",
+    "phone": "+9876543210"
+  }
+}
+
+### Error: Missing name
+POST {{baseUrl}}/projects/{{projectId}}/parties
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "partyType": "CLIENT",
+  "contact": {
+    "email": "test@example.com"
+  }
+}
+
+### Error: Duplicate name in same project
+POST {{baseUrl}}/projects/{{projectId}}/parties
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "ABC Corporation",
+  "partyType": "CLIENT",
+  "contact": {
+    "email": "another@example.com"
+  }
+}
+
+### ====================================
+### 2. GET ALL PARTIES FOR PROJECT
+### ====================================
+
+### Get all parties
+GET {{baseUrl}}/projects/{{projectId}}/parties
+Authorization: Bearer {{token}}
+
+### Get clients only
+GET {{baseUrl}}/projects/{{projectId}}/parties?partyType=CLIENT
+Authorization: Bearer {{token}}
+
+### Get vendors only
+GET {{baseUrl}}/projects/{{projectId}}/parties?partyType=VENDOR
+Authorization: Bearer {{token}}
+
+### Get active parties
+GET {{baseUrl}}/projects/{{projectId}}/parties?status=ACTIVE
+Authorization: Bearer {{token}}
+
+### Search parties
+GET {{baseUrl}}/projects/{{projectId}}/parties?search=ABC
+Authorization: Bearer {{token}}
+
+### With pagination
+GET {{baseUrl}}/projects/{{projectId}}/parties?page=1&limit=5
+Authorization: Bearer {{token}}
+
+### Combined filters
+GET {{baseUrl}}/projects/{{projectId}}/parties?partyType=CLIENT&status=ACTIVE&search=corp
+Authorization: Bearer {{token}}
+
+### ====================================
+### 3. GET SINGLE PARTY
+### ====================================
+
+### Get party by ID
+@partyId = 507f1f77bcf86cd799439022
+GET {{baseUrl}}/projects/{{projectId}}/parties/{{partyId}}
+Authorization: Bearer {{token}}
+
+### Error: Invalid party ID
+GET {{baseUrl}}/projects/{{projectId}}/parties/invalid-id
+Authorization: Bearer {{token}}
+
+### ====================================
+### 4. UPDATE PARTY
+### ====================================
+
+### Update party name and contact
+PUT {{baseUrl}}/projects/{{projectId}}/parties/{{partyId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "ABC Corporation Ltd",
+  "contact": {
+    "email": "info@abccorp.com",
+    "phone": "+1111111111"
+  }
+}
+
+### Change party type
+PUT {{baseUrl}}/projects/{{projectId}}/parties/{{partyId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "partyType": "VENDOR"
+}
+
+### Update status
+PUT {{baseUrl}}/projects/{{projectId}}/parties/{{partyId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "status": "INACTIVE"
+}
+
+### Error: Duplicate name
+PUT {{baseUrl}}/projects/{{projectId}}/parties/{{partyId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "XYZ Construction"
+}
+
+### ====================================
+### 5. UPDATE PARTY STATUS ONLY
+### ====================================
+
+PATCH {{baseUrl}}/projects/{{projectId}}/parties/{{partyId}}/status
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "status": "ACTIVE"
+}
+
+### Error: Invalid status
+PATCH {{baseUrl}}/projects/{{projectId}}/parties/{{partyId}}/status
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "status": "PENDING"
+}
+
+### ====================================
+### 6. DELETE PARTY
+### ====================================
+
+DELETE {{baseUrl}}/projects/{{projectId}}/parties/{{partyId}}
+Authorization: Bearer {{token}}
+
+### Error: Party not found
+DELETE {{baseUrl}}/projects/{{projectId}}/parties/507f1f77bcf86cd799439999
+Authorization: Bearer {{token}}
+
+### ====================================
+### 7. GET PARTY STATISTICS
+### ====================================
+
+GET {{baseUrl}}/projects/{{projectId}}/parties-stats
+Authorization: Bearer {{token}}
+
+### ====================================
+### 8. TEST DATA
+### ====================================
+
+### Create multiple test clients
+POST {{baseUrl}}/projects/{{projectId}}/parties
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Client One",
+  "partyType": "CLIENT",
+  "contact": {
+    "email": "client1@example.com"
+  }
+}
+
+###
+POST {{baseUrl}}/projects/{{projectId}}/parties
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Client Two",
+  "partyType": "CLIENT",
+  "status": "INACTIVE"
+}
+
+### Create multiple test vendors
+POST {{baseUrl}}/projects/{{projectId}}/parties
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Vendor One",
+  "partyType": "VENDOR",
+  "contact": {
+    "email": "vendor1@example.com",
+    "phone": "555-0101"
+  }
+}
+
+###
+POST {{baseUrl}}/projects/{{projectId}}/parties
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Vendor Two",
+  "partyType": "VENDOR",
+  "contact": {
+    "address": "456 Vendor Street"
+  }
+}
+
+### ====================================
+### 9. ERROR CASES
+### ====================================
+
+### Invalid project ID
+POST {{baseUrl}}/projects/invalid-project-id/parties
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Test",
+  "partyType": "CLIENT"
+}
+
+### No authentication
+POST {{baseUrl}}/projects/{{projectId}}/parties
+Content-Type: application/json
+
+{
+  "name": "Test",
+  "partyType": "CLIENT"
+}
+
+### Invalid JSON
+POST {{baseUrl}}/projects/{{projectId}}/parties
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+Invalid JSON Data
+
+### Invalid partyType
+POST {{baseUrl}}/projects/{{projectId}}/parties
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Test Company",
+  "partyType": "SUPPLIER"
+}
+
+### ====================================
+### 10. BULK OPERATIONS (for testing)
+### ====================================
+
+### Get all with all filters
+GET {{baseUrl}}/projects/{{projectId}}/parties?partyType=CLIENT&status=ACTIVE&search=client&page=1&limit=10
+Authorization: Bearer {{token}}

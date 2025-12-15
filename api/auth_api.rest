@@ -1,0 +1,138 @@
+// @baseURL http://localhost:5000/api
+@baseURL = http://localhost:5000/api
+
+// JWT token will be saved here after a successful login
+@jwtToken = 
+
+### ------------------- AUTHENTICATION & SETUP -------------------
+
+// 1. REGISTER USER (Email/Password) - First time setup only
+POST {{baseURL}}/auth/register
+Content-Type: application/json
+
+{
+    "name": "Admin Tester",
+    "email": "hammad.irshad@gmail.com",
+    "password": "password123",
+    "confirmPassword": "password123"
+}
+
+### 2. VERIFY OTP (Simulated - Check console for OTP)
+// NOTE: OTP will be logged in your Node.js console during registration.
+POST {{baseURL}}/auth/verify-otp
+Content-Type: application/json
+
+{
+    "email": "hammad.irshad@gmail.com",
+    "otp": "015581" 
+}
+
+### 3. LOGIN USER (Get JWT Token)
+// Set the @jwtToken variable after successful login.
+POST {{baseURL}}/auth/login
+Content-Type: application/json
+
+{
+    "email": "faisaldeveloperr@gmail.com",
+    "password": "password123"
+}
+
+// Set the token manually from the response:
+// @jwtToken = {{response.body.token}}
+
+
+### 4. FORGOT PASSWORD (Initiate OTP for reset)
+POST {{baseURL}}/auth/forgot-password
+Content-Type: application/json
+
+{
+    "email": "admin@budgetsaver.com"
+}
+
+### 5. RESET PASSWORD (Use new OTP from console)
+POST {{baseURL}}/auth/reset-password
+Content-Type: application/json
+
+{
+    "email": "admin@budgetsaver.com",
+    "otp": "NEW_OTP_FROM_CONSOLE", 
+    "password": "newpassword123",
+    "confirmPassword": "newpassword123"
+}
+
+
+### 6. VERIFY AUTH (Check JWT validity)
+GET {{baseURL}}/auth/verify
+Authorization: Bearer {{jwtToken}}
+
+### ------------------- PARTY MANAGEMENT (Clients & Vendors) -------------------
+
+// 7. CREATE NEW CLIENT
+POST {{baseURL}}/parties
+Content-Type: application/json
+Authorization: Bearer {{jwtToken}}
+
+{
+    "name": "Client Alpha Corp",
+    "partyType": "CLIENT",
+    "contact": {
+        "email": "alpha@corp.com",
+        "phone": "+923001234567"
+    }
+}
+
+### 8. CREATE NEW VENDOR
+POST {{baseURL}}/parties
+Content-Type: application/json
+Authorization: Bearer {{jwtToken}}
+
+{
+    "name": "Vendor Beta Services",
+    "partyType": "VENDOR",
+    "contact": {
+        "email": "beta@service.com"
+    }
+}
+
+// 9. GET ALL PARTIES (Filter by type)
+GET {{baseURL}}/parties?type=CLIENT
+Authorization: Bearer {{jwtToken}}
+
+### 10. GET SINGLE PARTY (Replace <PARTY_ID> with actual ID from request 7 or 8)
+GET {{baseURL}}/parties/<PARTY_ID>
+Authorization: Bearer {{jwtToken}}
+
+### 11. UPDATE PARTY (Deactivate Vendor Beta)
+PUT {{baseURL}}/parties/<VENDOR_BETA_ID>
+Content-Type: application/json
+Authorization: Bearer {{jwtToken}}
+
+{
+    "name": "Vendor Beta Services (Deactivated)",
+    "status": "INACTIVE"
+}
+
+
+### ------------------- PROJECT MANAGEMENT -------------------
+
+// 12. CREATE NEW PROJECT
+POST {{baseURL}}/projects
+Content-Type: application/json
+Authorization: Bearer {{jwtToken}}
+
+{
+    "title": "Website Relaunch Phase 1",
+    "code": "WR-P1-2025",
+    "initialBudget": 500000,
+    "description": "Redesign and deployment of public-facing website.",
+    "clients": ["<CLIENT_ALPHA_ID>"], // Use ID from request 7
+    "vendors": ["<VENDOR_BETA_ID>"] // Use ID from request 8
+}
+
+### 13. GET ALL PROJECTS
+GET {{baseURL}}/projects
+Authorization: Bearer {{jwtToken}}
+
+### 14. GET PROJECT DETAILS (Replace <PROJECT_ID>)
+GET {{baseURL}}/projects/<PROJECT_ID>
+Authorization: Bearer {{jwtToken}}

@@ -1,0 +1,40 @@
+### BASE URL
+@baseUrl = http://localhost:5000/api
+
+@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5MzkxNmMwMDMyODU5NmRkZDEzZWM1NyIsInJvbGUiOiJhZ2VudCIsImlhdCI6MTc2NTM0OTExNywiZXhwIjoxNzY1OTUzOTE3fQ.tAKZRvfUqlC3KUlq5xDD9kxr4k5vCXbNKhhMNCodpqI
+
+
+### Upload Profile Image
+POST {{baseUrl}}/assets/profile-image
+Authorization: Bearer {{token}}
+Content-Type: multipart/form-data; boundary=test
+
+--test
+Content-Disposition: form-data; name="image"; filename="profile.jpg"                                                                    
+Content-Type: image/jpeg
+
+<  ./images/profile.jpg
+--test--
+
+### Upload PNG
+POST {{baseUrl}}/assets/profile-image
+Authorization: Bearer {{token}}
+Content-Type: multipart/form-data; boundary=test
+
+--test
+Content-Disposition: form-data; name="image"; filename="avatar.png"
+Content-Type: image/png
+
+< ./images/avatar.png
+--test--
+
+### No Token (Error)
+POST {{baseUrl}}/assets/profile-image
+Content-Type: multipart/form-data; boundary=test
+
+--test
+Content-Disposition: form-data; name="image"; filename="test.jpg"
+Content-Type: image/jpeg
+
+< ./images/test.jpg
+--test--
