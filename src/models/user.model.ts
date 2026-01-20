@@ -2,6 +2,7 @@ import mongoose, { Document, Schema, Types } from "mongoose";
 
 export interface IUser {
   _id?: Types.ObjectId; 
+  profileImage: string,
   name: string;
   email: string;
   phone?: string;
@@ -34,6 +35,10 @@ const userSchema = new Schema<IUser, mongoose.Model<IUserDocument>>(
         /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/,
         "Please fill a valid email address",
       ],
+    },
+    profileImage:{
+      type: String,
+      trim: true
     },
     phone: {
       type: String,

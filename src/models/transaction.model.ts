@@ -4,12 +4,12 @@ import { ObjectId } from 'mongodb';
 export interface ITransaction extends Document {
   project: ObjectId;
   party: ObjectId;
-  type: 'INCOME' | 'EXPENSE';
+  type: 'income' | 'expense'; 
   amount: number;
-  currency: string;
   date: Date;
-  reference?: string;
-  notes?: string;
+  note?: string; // Frontend ke 'note' field se match karne ke liye
+  fileUrl?: string; // Image/Receipt ka public URL
+  fileName?: string; // File ka naam (e.g., receipt_123.jpg)
   createdBy: ObjectId;
   createdAt: Date;
   updatedAt: Date;
@@ -30,24 +30,48 @@ const TransactionSchema: Schema = new Schema({
   }, 
   type: { 
     type: String, 
-    enum: ['INCOME', 'EXPENSE'], 
+    enum: ['income', 'expense'], 
     required: true,
     index: true
   },
-  amount: { type: Number, required: true, min: 0.01 },
-  currency: { type: String, default: 'PKR', trim: true },
-  date: { type: Date, default: Date.now, index: true },
-  reference: { type: String, trim: true },
-  notes: { type: String, trim: true },
-  
-  createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-  createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now },
-  
-  isDeleted: { type: Boolean, default: false } 
+  amount: { 
+    type: Number, 
+    required: true, 
+    min: 0 
+  },
+
+  date: { 
+    type: Date, 
+    default: Date.now, 
+    index: true 
+  },
+  note: {
+    type: String, 
+    trim: true 
+  },
+  // File details
+  fileUrl: { 
+    type: String,
+    trim: true 
+  },
+  fileName: { 
+    type: String,
+    trim: true 
+  },
+  createdBy: { 
+    type: Schema.Types.ObjectId, 
+    ref: 'User', 
+    required: true 
+  },
+  isDeleted: { 
+    type: Boolean, 
+    default: false 
+  } 
+}, {
+  timestamps: true 
 });
 
-TransactionSchema.index({ project: 1, date: -1, type: 1 });
+TransactionSchema.index({ project: 1, date: -1 });
 
 const Transaction = mongoose.model<ITransaction>('Transaction', TransactionSchema);
 export default Transaction;

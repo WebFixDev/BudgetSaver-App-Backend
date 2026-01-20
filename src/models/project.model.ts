@@ -9,9 +9,10 @@ export interface IProject extends Document {
   initialBudget: number;
   totalIncome: number;
   totalExpense: number;
-  netProfit: number;
+  balance: number;
+  currency: string;
   status: 'PLANNED' | 'ACTIVE' | 'COMPLETED' | 'ON_HOLD';
-  createdBy?: ObjectId;
+  createdBy: ObjectId; // Changed from optional to required
   projectImage?: string;
   startDate?: Date;
   endDate?: Date;
@@ -24,22 +25,26 @@ const ProjectSchema: Schema = new Schema({
     type: String, 
     required: true, 
     trim: true,
-    minlength: 3,
+    minlength: 2,
     maxlength: 200
   },
   code: { 
     type: String, 
     required: true, 
-    unique: true, 
     trim: true,
     uppercase: true
+    // REMOVED: unique: true - We'll handle uniqueness with createdBy
   }, 
   description: { 
     type: String, 
     trim: true,
     maxlength: 1000
   },
-  
+    currency: { 
+    type: String, 
+    default: 'USD',
+    trim: true 
+  },
   initialBudget: { 
     type: Number, 
     default: 0,
@@ -56,7 +61,7 @@ const ProjectSchema: Schema = new Schema({
     default: 0,
     min: 0
   },
-  netProfit: { 
+  balance: { 
     type: Number, 
     default: 0
   },
@@ -68,7 +73,8 @@ const ProjectSchema: Schema = new Schema({
   },
   createdBy: { 
     type: Schema.Types.ObjectId,
-    ref: 'User'
+    ref: 'User',
+    required: true // Made required
   },
   projectImage: { 
     type: String, 
@@ -85,8 +91,12 @@ const ProjectSchema: Schema = new Schema({
   timestamps: true
 });
 
+// Add compound index for code + createdBy to ensure uniqueness per user
+ProjectSchema.index({ code: 1, createdBy: 1 }, { unique: true });
 
+// Other indexes
 ProjectSchema.index({ status: 1 });
+ProjectSchema.index({ createdBy: 1 });
 ProjectSchema.index({ createdAt: -1 });
 
 const Project = mongoose.model<IProject>('Project', ProjectSchema);

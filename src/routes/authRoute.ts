@@ -4,7 +4,7 @@ import {
     loginUser, 
     forgotPassword, 
     resetPassword,  
-    socialAuthCallback,
+    googleAuthCallback,
     verifyUserOTP
 } from '../controllers/authController'; 
 
@@ -19,7 +19,7 @@ router.post('/forgot-password', forgotPassword);
 router.post('/reset-password', resetPassword);  
 
 
-router.post('/google/callback', socialAuthCallback); 
-router.post('/facebook/callback', socialAuthCallback); 
+router.post('/google-login', googleAuthCallback); 
+
 
 export default router;

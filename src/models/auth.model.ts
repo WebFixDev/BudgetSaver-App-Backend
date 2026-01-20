@@ -31,7 +31,6 @@ const authSchema = new Schema<IAuth>(
       type: String,
       sparse: true, 
     },
-
     password: {
       type: String,
       minlength: [6, "Password must be at least 6 characters"],

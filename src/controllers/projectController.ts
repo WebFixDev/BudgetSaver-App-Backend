@@ -102,6 +102,193 @@ export const getAllProjects = async (
   }
 };
 
+
+export const getMyProjects = async (
+  req: Request, 
+  res: Response, 
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const userId = req.user?.id; // Assuming you have user info in req.user from auth middleware
+    
+    if (!userId) {
+      res.status(401).json({
+        success: false,
+        message: 'User not authenticated'
+      });
+      return;
+    }
+
+    const {
+      status,
+      page = '1',
+      limit = '10',
+      search,
+      sortBy = 'createdAt',
+      sortOrder = 'desc'
+    } = req.query;
+
+    const query: any = { createdBy: new ObjectId(userId) };
+
+    // Filter by status
+    if (status && ['PLANNED', 'ACTIVE', 'COMPLETED', 'ON_HOLD'].includes(status as string)) {
+      query.status = status;
+    }
+
+    // Search by title or code
+    if (search) {
+      query.$or = [
+        { title: { $regex: search, $options: 'i' } },
+        { code: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    const pageNum = parseInt(page as string, 10);
+    const limitNum = parseInt(limit as string, 10);
+    const skip = (pageNum - 1) * limitNum;
+
+    // Sort configuration
+    const sort: any = {};
+    sort[sortBy as string] = sortOrder === 'desc' ? -1 : 1;
+
+    // Get total count for pagination
+    const total = await Project.countDocuments(query);
+
+    // Get projects
+    const projects = await Project.find(query)
+      .sort(sort)
+      .skip(skip)
+      .limit(limitNum)
+      .lean();
+
+    // Get parties count for each project
+    const projectsWithParties = await Promise.all(
+      projects.map(async (project) => {
+        const [clientsCount, vendorsCount] = await Promise.all([
+          Party.countDocuments({ 
+            project: project._id, 
+            partyType: 'CLIENT',
+            status: 'ACTIVE'
+          }),
+          Party.countDocuments({ 
+            project: project._id, 
+            partyType: 'VENDOR',
+            status: 'ACTIVE'
+          })
+        ]);
+
+        return {
+          ...project,
+          partiesSummary: {
+            total: clientsCount + vendorsCount,
+            clients: clientsCount,
+            vendors: vendorsCount
+          }
+        };
+      })
+    );
+
+    res.status(200).json({
+      success: true,
+      data: projectsWithParties,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        pages: Math.ceil(total / limitNum)
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get project statistics for logged-in user
+export const getMyProjectStatistics = async (
+  req: Request, 
+  res: Response, 
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const userId = req.user?.id;
+    
+    if (!userId) {
+      res.status(401).json({
+        success: false,
+        message: 'User not authenticated'
+      });
+      return;
+    }
+
+    // Total projects created by user
+    const totalProjects = await Project.countDocuments({ createdBy: userId });
+
+    // Projects by status
+    const projectsByStatus = await Project.aggregate([
+      { $match: { createdBy: new ObjectId(userId) } },
+      { $group: { _id: '$status', count: { $sum: 1 } } }
+    ]);
+
+    // Total budget and financials
+    const financialStats = await Project.aggregate([
+      { $match: { createdBy: new ObjectId(userId) } },
+      {
+        $group: {
+          _id: null,
+          totalBudget: { $sum: '$initialBudget' },
+          totalIncome: { $sum: '$totalIncome' },
+          totalExpense: { $sum: '$totalExpense' },
+          balance: { $sum: '$balance' },
+          avgBudget: { $avg: '$initialBudget' }
+        }
+      }
+    ]);
+
+    // Get total parties count for all user's projects
+    const userProjects = await Project.find({ createdBy: userId }).select('_id');
+    const projectIds = userProjects.map(p => p._id);
+
+    const partiesStats = await Party.aggregate([
+      { $match: { project: { $in: projectIds } } },
+      {
+        $group: {
+          _id: '$partyType',
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    // Format statistics
+    const statistics = {
+      projects: {
+        totalProjects,
+        totalBudget: financialStats[0]?.totalBudget || 0,
+        totalIncome: financialStats[0]?.totalIncome || 0,
+        totalExpense: financialStats[0]?.totalExpense || 0,
+        totalNetProfit: financialStats[0]?.totalNetProfit || 0,
+        avgBudget: Math.round(financialStats[0]?.avgBudget || 0),
+        byStatus: projectsByStatus.reduce((acc, curr) => {
+          acc[curr._id] = curr.count;
+          return acc;
+        }, {} as Record<string, number>)
+      },
+      parties: {
+        totalClients: partiesStats.find(p => p._id === 'CLIENT')?.count || 0,
+        totalVendors: partiesStats.find(p => p._id === 'VENDOR')?.count || 0,
+        totalParties: (partiesStats.find(p => p._id === 'CLIENT')?.count || 0) + 
+                     (partiesStats.find(p => p._id === 'VENDOR')?.count || 0)
+      }
+    };
+
+    res.status(200).json({
+      success: true,
+      data: statistics
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // Get single project by ID with parties
 export const getProjectById = async (
   req: Request, 
@@ -144,7 +331,7 @@ export const getProjectById = async (
     const financialSummary = {
       totalIncome: project.totalIncome || 0,
       totalExpense: project.totalExpense || 0,
-      netProfit: project.netProfit || 0,
+      balance: project.balance || 0,
       initialBudget: project.initialBudget || 0,
       remainingBudget: (project.initialBudget || 0) - (project.totalExpense || 0)
     };
@@ -237,9 +424,9 @@ export const createProject = async (
   try {
     const {
       title,
-      code,
       description,
       projectImage,
+      currency = 'USD',
       initialBudget = 0,
       status = 'ACTIVE',
       startDate,
@@ -251,27 +438,55 @@ export const createProject = async (
       return next(new ErrorResponse('Title is required', 400));
     }
 
-    if (!code?.trim()) {
-      return next(new ErrorResponse('Project code is required', 400));
-    }
-
-    // Validate initial budget
-    if (initialBudget < 0) {
-      return next(new ErrorResponse('Initial budget cannot be negative', 400));
-    }
-
     // Validate status
     if (status && !['PLANNED', 'ACTIVE', 'COMPLETED', 'ON_HOLD'].includes(status)) {
       return next(new ErrorResponse('Invalid status value', 400));
     }
 
-    // Format code to uppercase
-    const formattedCode = code.trim().toUpperCase();
+    // Generate project code: first 3 letters of title + sequence number
+    const titleWords = title.trim().split(' ').filter((word : string) => word.length > 0);
+    
+    // Get first 3 characters from title
+    let codePrefix = '';
+    if (titleWords.length > 0) {
 
-    // Check if project code already exists
+      const firstWord = titleWords[0];
+      codePrefix = firstWord.substring(0, 2).toUpperCase();
+    }
+
+    // Find the latest project code with same prefix to get next sequence number
+    const regex = new RegExp(`^${codePrefix}(\\d+)$`);
+    const latestProject = await Project.findOne({
+      code: { $regex: regex }
+    }).sort({ code: -1 }).limit(2);
+
+    let sequenceNumber = 1;
+    if (latestProject && latestProject.code) {
+      // Extract sequence number from latest code
+      const match = latestProject.code.match(regex);
+      if (match && match[1]) {
+        sequenceNumber = parseInt(match[1]) + 1;
+      }
+    }
+
+    // Generate final code
+    const formattedCode = `${codePrefix}${sequenceNumber.toString().padStart(2, '0')}`;
+
+    // Check if project code already exists (just in case)
     const existingProject = await Project.findOne({ code: formattedCode });
     if (existingProject) {
-      return next(new ErrorResponse(`Project code '${formattedCode}' already exists`, 409));
+      // If by chance code exists, increment sequence number
+      sequenceNumber++;
+      const newCode = `${codePrefix}${sequenceNumber.toString().padStart(2, '0')}`;
+      // Recursively check until we find unique code (max 10 attempts)
+      for (let i = 0; i < 10; i++) {
+        const checkProject = await Project.findOne({ code: newCode });
+        if (!checkProject) {
+          break;
+        }
+        sequenceNumber++;
+      }
+      return next(new ErrorResponse(`Generated project code conflict. Please try again.`, 409));
     }
 
     // Validate dates
@@ -305,6 +520,7 @@ export const createProject = async (
       initialBudget,
       projectImage,
       status,
+      currency,
       startDate: startDateObj,
       endDate: endDateObj,
     };
@@ -784,6 +1000,82 @@ export const updateProjectFinancials = async (
       success: true,
       message: 'Project financials updated successfully',
       data: updatedProject
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+
+// src/controllers/projectController.ts
+export const checkMyProjectCodeExists = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const userId = req.user?.id; // Get logged-in user ID
+    const { code } = req.params;
+    
+    if (!userId) {
+      res.status(401).json({
+        success: false,
+        message: 'User not authenticated'
+      });
+      return;
+    }
+
+    if (!code) {
+      res.status(400).json({
+        success: false,
+        message: 'Project code is required'
+      });
+      return;
+    }
+
+    // Check if code exists for THIS USER only
+    const project = await Project.findOne({ 
+      code: code.toUpperCase(),
+      createdBy: new ObjectId(userId)
+    });
+    
+    console.log(project, "kldfaj alkjf kaljflka ")
+    res.status(200).json({
+      success: true,
+      exists: !!project,
+      message: project ? 'Project code already exists for your account' : 'Code is available'
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Optional: Also check global code (for admin purposes)
+export const checkGlobalProjectCodeExists = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const { code } = req.params;
+    
+    if (!code) {
+      res.status(400).json({
+        success: false,
+        message: 'Project code is required'
+      });
+      return;
+    }
+
+    // Check if code exists globally (any user)
+    const project = await Project.findOne({ 
+      code: code.toUpperCase()
+    });
+    
+    res.status(200).json({
+      success: true,
+      exists: !!project,
+      message: project ? 'Project code already exists' : 'Code is available'
     });
   } catch (error) {
     next(error);

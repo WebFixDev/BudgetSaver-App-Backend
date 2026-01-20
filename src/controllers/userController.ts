@@ -129,6 +129,7 @@ export const getCurrentUser = async (
       return next(new ErrorResponse('User not found', 404));
     }
 
+    console.log(user)
     res.status(200).json({
       success: true,
       data: user
@@ -402,8 +403,43 @@ export const updateCurrentUser = async (
       }
     }
 
-    // Users cannot change their own role or isActive
-    // Remove these fields if present
+    // Update profile image
+    if (updateData.profileImage !== undefined) {
+      if (updateData.profileImage === '') {
+        // If empty string is provided, remove the profile image
+        updateFields.profileImage = undefined;
+        
+        // Optional: Delete old image from storage if you have that functionality
+        // if (existingUser.profileImage) {
+        //   await deleteImageFromStorage(existingUser.profileImage);
+        // }
+      } else {
+        // Validate profile image URL if provided
+        const profileImage = updateData.profileImage.trim();
+        
+        // Basic URL validation
+        try {
+          new URL(profileImage);
+        } catch (error) {
+          return next(new ErrorResponse('Please provide a valid image URL', 400));
+        }
+        
+        // Optional: Validate file extension
+        const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
+        const hasValidExtension = allowedExtensions.some(ext => 
+          profileImage.toLowerCase().endsWith(ext)
+        );
+        
+        if (!hasValidExtension) {
+          return next(new ErrorResponse('Image must be JPG, PNG, GIF, or WebP format', 400));
+        }
+        
+        updateFields.profileImage = profileImage;
+        
+     
+      }
+    }
+
     delete updateData.role;
     delete updateData.isActive;
 
@@ -445,6 +481,8 @@ export const updateCurrentUser = async (
     )
       .select('-__v')
       .lean();
+
+    console.log(updatedUser, "this is updated data");
 
     res.status(200).json({
       success: true,
