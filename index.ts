@@ -5,7 +5,7 @@ import app from "./src/app";
 
 dotenv.config();
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5003;
 const MONGO_URI = process.env.MONGO_URI || "";
 
 const server = http.createServer(app);
