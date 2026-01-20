@@ -45,3 +45,9 @@ pids/
 
 # Optional: uploads (agar local uploads folder ho)
 uploads/
+
+# Firebase service account (DO NOT COMMIT)
+src/config/firebase-service-account.json
+
+
+
