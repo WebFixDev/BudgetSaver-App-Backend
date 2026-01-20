@@ -7,9 +7,13 @@
   "type": "commonjs",
   "main": "index.js",
   "scripts": {
-    "start": "node dist/index.js",
-    "dev": "nodemon --exec ts-node index.ts",
-    "build": "tsc"
+    "start": "nodemon --exec ts-node index.ts",
+    "build": "tsc",
+    "prod": "pm2 start index.ts --name budget-backend --interpreter node --node-args=\"-r ts-node/register\"",
+    "restart": "pm2 restart budget-backend",
+    "stop": "pm2 stop budget-backend",
+    "delete": "pm2 delete budget-backend",
+    "logs": "pm2 logs budget-backend"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
