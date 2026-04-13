@@ -139,6 +139,7 @@ export const getCurrentUser = async (
   }
 };
 
+
 // Create new user (admin only)
 export const createUser = async (
   req: Request,

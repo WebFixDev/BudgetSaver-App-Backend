@@ -1,8 +1,9 @@
+// src/models/User.ts
 import mongoose, { Document, Schema, Types } from "mongoose";
 
 export interface IUser {
   _id?: Types.ObjectId; 
-  profileImage: string,
+  profileImage?: string;
   name: string;
   email: string;
   phone?: string;
@@ -13,6 +14,10 @@ export interface IUser {
   gender?: "male" | "female" | "other";
   bio?: string;
   languages?: string[];
+  
+  // 🔥 NEW: Subscription fields for Hybrid Approach 🔥
+  isPro: boolean;
+  subscriptionId?: Types.ObjectId; 
 }
 
 export type IUserDocument = IUser & Document<Types.ObjectId, any, IUser>;
@@ -36,7 +41,7 @@ const userSchema = new Schema<IUser, mongoose.Model<IUserDocument>>(
         "Please fill a valid email address",
       ],
     },
-    profileImage:{
+    profileImage: {
       type: String,
       trim: true
     },
@@ -54,11 +59,20 @@ const userSchema = new Schema<IUser, mongoose.Model<IUserDocument>>(
       type: Boolean,
       default: true,
     },
-  
     address: { type: String, trim: true },
     dateOfBirth: { type: Date },
     gender: { type: String, enum: ["male", "female", "other"] },
     bio: { type: String, trim: true },
+    
+    // 🔥 NEW: Hybrid Schema Implementation 🔥
+    isPro: {
+      type: Boolean,
+      default: false, // Default user is not pro
+    },
+    subscriptionId: {
+      type: Schema.Types.ObjectId,
+      ref: "Subscription", // Links to the Subscription collection
+    }
   },
   {
     timestamps: true,

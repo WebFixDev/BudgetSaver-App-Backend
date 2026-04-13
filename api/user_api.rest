@@ -3,7 +3,7 @@
 ### ====================================
 
 ### BASE URL
-@baseUrl = http://localhost:5000/api
+@baseUrl = https://budgetsaver.webfix.com/api
 @token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5MzkxNmMwMDMyODU5NmRkZDEzZWM1NyIsInJvbGUiOiJhZ2VudCIsImlhdCI6MTc2NTM0OTExNywiZXhwIjoxNzY1OTUzOTE3fQ.tAKZRvfUqlC3KUlq5xDD9kxr4k5vCXbNKhhMNCodpqI
 @adminToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5MzkxNmMwMDMyODU5NmRkZDEzZWM1NyIsInJvbGUiOiJhZ2VudCIsImlhdCI6MTc2NTM0OTExNywiZXhwIjoxNzY1OTUzOTE3fQ.tAKZRvfUqlC3KUlq5xDD9kxr4k5vCXbNKhhMNCodpqI
 
