@@ -4,6 +4,7 @@ import mongoose, { Types } from "mongoose";
 import Transaction, { ITransaction } from "../models/transaction.model";
 import Project, { IProject } from "../models/project.model";
 import Party, { IParty } from "../models/party.model";
+import User from "../models/user.model";
 
 interface ITransactionRequest extends Request {
   body: {
@@ -91,6 +92,23 @@ export const createTransaction = async (
       });
       return;
     }
+
+
+const currentUser = await User.findById(userId);
+    if (currentUser && !currentUser.isPro) {
+      // Is project mein total transactions count karein
+      const transactionCount = await Transaction.countDocuments({ project: project });
+      
+      // Agar 50 transactions poori ho chuki hain
+      if (transactionCount >= 50) {
+        res.status(403).json({ 
+          success: false, 
+          message: "Free plan limit reached. Please upgrade to Pro to add unlimited transactions." 
+        });
+        return;
+      }
+    }
+
 
     // Check if party exists and belongs to the same project
     const partyExists = await Party.findOne({ 

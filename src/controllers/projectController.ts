@@ -4,6 +4,7 @@ import Project, { IProject } from '../models/project.model';
 import Party from '../models/party.model';
 import { ObjectId } from 'mongodb';
 import { ErrorResponse } from '../utils/errorResponse';
+import User from '../models/user.model';
 
 // Get all projects with filtering and pagination
 export const getAllProjects = async (
@@ -66,13 +67,11 @@ export const getAllProjects = async (
         const [clientsCount, vendorsCount] = await Promise.all([
           Party.countDocuments({ 
             project: project._id, 
-            partyType: 'CLIENT',
-            status: 'ACTIVE'
+            partyType: 'CLIENT'
           }),
           Party.countDocuments({ 
             project: project._id, 
-            partyType: 'VENDOR',
-            status: 'ACTIVE'
+            partyType: 'VENDOR'
           })
         ]);
 
@@ -109,7 +108,7 @@ export const getMyProjects = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const userId = req.user?.id; // Assuming you have user info in req.user from auth middleware
+    const userId = req.user?.id;
     
     if (!userId) {
       res.status(401).json({
@@ -130,12 +129,10 @@ export const getMyProjects = async (
 
     const query: any = { createdBy: new ObjectId(userId) };
 
-    // Filter by status
     if (status && ['PLANNED', 'ACTIVE', 'COMPLETED', 'ON_HOLD'].includes(status as string)) {
       query.status = status;
     }
 
-    // Search by title or code
     if (search) {
       query.$or = [
         { title: { $regex: search, $options: 'i' } },
@@ -147,35 +144,35 @@ export const getMyProjects = async (
     const limitNum = parseInt(limit as string, 10);
     const skip = (pageNum - 1) * limitNum;
 
-    // Sort configuration
     const sort: any = {};
     sort[sortBy as string] = sortOrder === 'desc' ? -1 : 1;
 
-    // Get total count for pagination
     const total = await Project.countDocuments(query);
 
-    // Get projects
     const projects = await Project.find(query)
       .sort(sort)
       .skip(skip)
       .limit(limitNum)
       .lean();
 
-    // Get parties count for each project
+    // ✅ Fix: properly map projects and get counts
     const projectsWithParties = await Promise.all(
       projects.map(async (project) => {
+        const projectId = project._id;
+        
+        // Use countDocuments with proper filter
         const [clientsCount, vendorsCount] = await Promise.all([
           Party.countDocuments({ 
-            project: project._id, 
-            partyType: 'CLIENT',
-            status: 'ACTIVE'
+            project: projectId, 
+            partyType: 'CLIENT'
           }),
           Party.countDocuments({ 
-            project: project._id, 
-            partyType: 'VENDOR',
-            status: 'ACTIVE'
+            project: projectId, 
+            partyType: 'VENDOR'
           })
         ]);
+
+        console.log(`Project ${project.title} (${project.code}): ${clientsCount} active clients, ${vendorsCount} active vendors`);
 
         return {
           ...project,
@@ -416,6 +413,9 @@ export const getProjectByCode = async (
 };
 
 // Create new project
+// DHYAN RAHE: Agar aapki is file (projectController.ts) mein 'User' model import nahi hai, toh top par yeh line zaroor add kar lijiye ga:
+// import User from "../models/user.model";
+
 export const createProject = async (
   req: Request, 
   res: Response, 
@@ -433,7 +433,18 @@ export const createProject = async (
       endDate
     } = req.body;
 
-    // Validate required fields
+    if (req.user?.id) {
+      const currentUser = await User.findById(req.user.id);
+    
+      if (currentUser && !currentUser.isPro) {
+        const projectCount = await Project.countDocuments({ createdBy: req.user.id });
+    
+        if (projectCount >= 5) {
+          return next(new ErrorResponse('Free plan limit reached. Please upgrade to Pro to create unlimited projects.', 403));
+        }
+      }
+    }
+
     if (!title?.trim()) {
       return next(new ErrorResponse('Title is required', 400));
     }
@@ -449,7 +460,6 @@ export const createProject = async (
     // Get first 3 characters from title
     let codePrefix = '';
     if (titleWords.length > 0) {
-
       const firstWord = titleWords[0];
       codePrefix = firstWord.substring(0, 2).toUpperCase();
     }
@@ -651,6 +661,23 @@ export const updateProject = async (
       // Auto-calculate net profit
       updateFields.netProfit = (updateFields.totalIncome || existingProject.totalIncome) - updateData.totalExpense;
     }
+
+    if (updateData.projectImage !== undefined) {
+  updateFields.projectImage = updateData.projectImage || null;
+}
+
+// Update currency
+if (updateData.currency !== undefined) {
+  if (!updateData.currency.trim()) {
+    return next(new ErrorResponse('Currency cannot be empty', 400));
+  }
+  updateFields.currency = updateData.currency.trim();
+}
+
+// Update currency symbol
+if (updateData.currencySymbol !== undefined) {
+  updateFields.currencySymbol = updateData.currencySymbol || '';
+}
 
     // Update project
     const updatedProject = await Project.findByIdAndUpdate(

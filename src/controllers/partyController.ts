@@ -4,6 +4,7 @@ import Party from '../models/party.model';
 import Project from '../models/project.model';
 import { ObjectId } from 'mongodb';
 import { ErrorResponse } from '../utils/errorResponse';
+import User from '../models/user.model';
 
 // Create party for a project
 export const createParty = async (
@@ -35,10 +36,26 @@ export const createParty = async (
       return next(new ErrorResponse('partyType must be CLIENT or VENDOR', 400));
     }
 
+
     // Check if project exists
     const project = await Project.findById(projectId);
     if (!project) {
       return next(new ErrorResponse('Project not found', 404));
+    }
+
+
+    if (req.user?.id) {
+      const currentUser = await User.findById(req.user.id);
+      
+      if (currentUser && !currentUser.isPro) {
+        // Is specific project ke andar total parties count karein
+        const partyCount = await Party.countDocuments({ project: projectId });
+        
+        // Agar 10 parties ban chuki hain (aap isay 5 bhi kar sakte hain)
+        if (partyCount >= 10) {
+          return next(new ErrorResponse('Free plan limit reached. Please upgrade to Pro to add unlimited clients and vendors.', 403));
+        }
+      }
     }
 
     // Check if party with same name already exists in same project
