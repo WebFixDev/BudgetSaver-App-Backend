@@ -4,6 +4,7 @@ import User, { IUser } from "../models/user.model";
 import { ObjectId } from "mongodb";
 import { ErrorResponse } from "../utils/errorResponse";
 
+
 // Get all users (admin only)
 export const getAllUsers = async (
   req: Request,
@@ -649,3 +650,5 @@ export const getUserStatistics = async (
     next(error);
   }
 };
+
+

@@ -15,9 +15,14 @@ export interface IUser {
   bio?: string;
   languages?: string[];
   
-  // 🔥 NEW: Subscription fields for Hybrid Approach 🔥
+  // 🔥 Subscription fields for Hybrid Approach 🔥
   isPro: boolean;
   subscriptionId?: Types.ObjectId; 
+
+  // 🔥 NEW: Silent Trial fields 🔥
+  trialStartAt?: Date;
+  trialEndsAt?: Date;
+  readonly isTrial: boolean; // Read-only virtual property
 }
 
 export type IUserDocument = IUser & Document<Types.ObjectId, any, IUser>;
@@ -64,7 +69,7 @@ const userSchema = new Schema<IUser, mongoose.Model<IUserDocument>>(
     gender: { type: String, enum: ["male", "female", "other"] },
     bio: { type: String, trim: true },
     
-    // 🔥 NEW: Hybrid Schema Implementation 🔥
+    // 🔥 Hybrid Schema Implementation 🔥
     isPro: {
       type: Boolean,
       default: false, // Default user is not pro
@@ -72,12 +77,34 @@ const userSchema = new Schema<IUser, mongoose.Model<IUserDocument>>(
     subscriptionId: {
       type: Schema.Types.ObjectId,
       ref: "Subscription", // Links to the Subscription collection
+    },
+
+    // 🔥 NEW: Silent Trial Implementation 🔥
+    trialStartAt: { 
+      type: Date, 
+      default: null 
+    },
+    trialEndsAt: { 
+      type: Date, 
+      default: null 
     }
   },
   {
     timestamps: true,
+    // Yeh dono options ON karna laazmi hain taake API response mein virtuals show hon
+    toJSON: { virtuals: true }, 
+    toObject: { virtuals: true } 
   }
 );
+
+// 🔥 Mongoose Virtual for 'isTrial' 🔥
+// Yeh database mein save nahi hoga, balki hamesha run-time par calculate hoga
+userSchema.virtual("isTrial").get(function (this: IUserDocument) {
+  if (true) return false; 
+  
+  // Current date ko trialEndsAt se compare karega
+  // return new Date() < this.trialEndsAt; 
+});
 
 const User = mongoose.model<IUser, mongoose.Model<IUserDocument>>("User", userSchema);
 export default User;

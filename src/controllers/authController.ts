@@ -276,6 +276,14 @@ export const verifyUserOTP = async (
     auth.otpExpiresAt = undefined;
     await auth.save();
 
+    // 🔥 NEW: Silent Trial Start Logic 🔥
+    if (!(user as any).trialStartAt) {
+      const now = new Date();
+      (user as any).trialStartAt = now;
+      (user as any).trialEndsAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+      await user.save();
+    }
+
     const token = generateToken({ id: user._id, role: user.role });
 
     res.json({
@@ -287,8 +295,11 @@ export const verifyUserOTP = async (
         name: user.name,
         email: user.email,
         role: user.role,
+        trialStartAt: (user as any).trialStartAt,
+        trialEndsAt: (user as any).trialEndsAt,
+        isTrial: (user as any).isTrial, 
       },
-    });
+    })
   } catch (err: any) {
     console.error("Verify OTP error:", err);
     res.status(500).json({ message: "Internal Server Error" });
@@ -330,10 +341,18 @@ export const loginUser = async (
       return;
     }
 
-    const match = await auth.comparePassword(password);
+ const match = await auth.comparePassword(password);
     if (!match) {
       res.status(401).json({ message: "Invalid email or password" });
       return;
+    }
+
+    // 🔥 NEW: Silent Trial Start Logic 🔥
+    if (!(user as any).trialStartAt) {
+      const now = new Date();
+      (user as any).trialStartAt = now;
+      (user as any).trialEndsAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+      await user.save();
     }
 
     const token = generateToken({ id: user._id, role: user.role });
@@ -347,6 +366,9 @@ export const loginUser = async (
         name: user.name,
         email: user.email,
         role: user.role,
+        trialStartAt: (user as any).trialStartAt,
+        trialEndsAt: (user as any).trialEndsAt,
+        isTrial: (user as any).isTrial,
       },
     });
   } catch (err: any) {
@@ -579,6 +601,14 @@ export const googleAuthCallback = async (
           });
           return;
         }
+
+        // 🔥 EXISTING USER: Silent Trial Start Logic 🔥
+        if (!(existingUser as any).trialStartAt) {
+          const now = new Date();
+          (existingUser as any).trialStartAt = now;
+          (existingUser as any).trialEndsAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+          await existingUser.save();
+        }
         
         // User already has Google auth, generate token
         const token = generateToken({ id: existingUser._id, role: existingUser.role });
@@ -593,7 +623,10 @@ export const googleAuthCallback = async (
             email: existingUser.email,
             role: existingUser.role,
             photo: existingUser.profileImage,
-            provider: "google"
+            provider: "google",
+            trialStartAt: (existingUser as any).trialStartAt,
+            trialEndsAt: (existingUser as any).trialEndsAt,
+            isTrial: (existingUser as any).isTrial,
           }
         });
         return;
@@ -608,6 +641,14 @@ export const googleAuthCallback = async (
       return;
     }
 
+    // 🔥 NEW USER: Silent Trial Logic 🔥
+    if (!(user as any).trialStartAt) {
+      const now = new Date();
+      (user as any).trialStartAt = now;
+      (user as any).trialEndsAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+      await user.save();
+    }
+
     const token = generateToken({ id: user._id, role: user.role });
 
     res.status(200).json({
@@ -620,7 +661,10 @@ export const googleAuthCallback = async (
         email: user.email,
         role: user.role,
         photo: user.profileImage,
-        provider: auth?.provider || "google"
+        provider: auth?.provider || "google",
+        trialStartAt: (user as any).trialStartAt,
+        trialEndsAt: (user as any).trialEndsAt,
+        isTrial: (user as any).isTrial,
       }
     });
   } catch (error: any) {
@@ -656,6 +700,15 @@ export const googleAuthCallback = async (
         
         if (user) {
           const auth = await Auth.findOne({ user: user._id });
+
+          // 🔥 RECOVERED USER: Silent Trial Logic 🔥
+          if (!(user as any).trialStartAt) {
+            const now = new Date();
+            (user as any).trialStartAt = now;
+            (user as any).trialEndsAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+            await user.save();
+          }
+
           const token = generateToken({ id: user._id, role: user.role });
           
           res.status(200).json({
@@ -668,7 +721,10 @@ export const googleAuthCallback = async (
               email: user.email,
               role: user.role,
               photo: user.profileImage,
-              provider: auth?.provider || "google"
+              provider: auth?.provider || "google",
+              trialStartAt: (user as any).trialStartAt,
+              trialEndsAt: (user as any).trialEndsAt,
+              isTrial: (user as any).isTrial,
             }
           });
           return;
@@ -716,7 +772,7 @@ export const verifyUserAuth = async (
       return;
     }
 
-    res.json({
+ res.json({
       success: true,
       message: "User verified",
       user: {
@@ -726,6 +782,10 @@ export const verifyUserAuth = async (
         role: user.role,
         isVerified: auth.isVerified,
         provider: auth.provider,
+        // 🔥 Trial fields add karein 🔥
+        trialStartAt: (user as any).trialStartAt,
+        trialEndsAt: (user as any).trialEndsAt,
+        isTrial: (user as any).isTrial,
       },
     });
   } catch (error: any) {

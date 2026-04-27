@@ -9,7 +9,7 @@ import {
   updateCurrentUser,
   deleteUser,
   toggleUserStatus,
-  getUserStatistics
+  getUserStatistics,
 } from '../controllers/userController';
 import { verifyTokenMiddleware, authorize } from '../middleware/authMiddleware';
 

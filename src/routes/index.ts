@@ -6,6 +6,7 @@ import partyRoutes from "./partyRoutes";
 import userRoutes from "./userRoutes";
 import transactionRoutes from "./transactionRoutes";
 import subscriptionRoutes from "./subscriptionRoutes";
+import adsRoutes from "./adsRoutes"
 
 
 const router = express.Router();
@@ -17,5 +18,6 @@ router.use("/projects", partyRoutes);
 router.use('/users', userRoutes);
 router.use('/transactions', transactionRoutes);
 router.use('/subscriptions', subscriptionRoutes);
+router.use('/ads', adsRoutes);
 
 export default router;
