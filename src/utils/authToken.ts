@@ -12,7 +12,7 @@ export const generateToken = (payload: { id: Types.ObjectId | string, role: stri
   return jwt.sign(
     payload,     
     secretKey,     
-    { expiresIn: "7d" }
+    { expiresIn: "365d" }
   );
 };
 
