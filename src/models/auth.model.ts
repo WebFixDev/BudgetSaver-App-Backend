@@ -3,7 +3,7 @@ import bcrypt from "bcrypt";
 
 export interface IAuth extends Document {
   user: Types.ObjectId;
-  provider: 'email' | 'google' | 'facebook';
+  provider: 'email' | 'google' | 'facebook' | 'apple';
   providerId?: string; 
   password?: string;
   isVerified: boolean;
@@ -23,7 +23,7 @@ const authSchema = new Schema<IAuth>(
     },
     provider: {
       type: String,
-      enum: ['email', 'google', 'facebook'],
+      enum: ['email', 'google', 'facebook', 'apple'],
       required: true,
       index: true,
     },

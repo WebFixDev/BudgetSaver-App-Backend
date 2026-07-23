@@ -16,6 +16,7 @@
     "logs": "pm2 logs budget-backend"
   },
   "dependencies": {
+    "apple-signin-auth": "^2.1.0",
     "bcrypt": "^6.0.0",
     "cloudinary": "^2.8.0",
     "cookie-parser": "^1.4.7",

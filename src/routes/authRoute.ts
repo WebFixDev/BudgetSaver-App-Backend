@@ -5,6 +5,7 @@ import {
     forgotPassword, 
     resetPassword,  
     googleAuthCallback,
+    appleAuthCallback,
     verifyUserOTP
 } from '../controllers/authController'; 
 
@@ -20,6 +21,7 @@ router.post('/reset-password', resetPassword);
 
 
 router.post('/google-login', googleAuthCallback); 
+router.post('/apple-login', appleAuthCallback); 
 
 
 export default router;

@@ -6,6 +6,7 @@ import { createOTP, hashOTP, verifyOTP } from "../utils/createOTP";
 import { sendEmail } from "../utils/sendEmail";
 import { generateToken } from "../utils/authToken";
 import {verifyGoogleToken} from "../utils/GoogleOAuth";
+import { verifyAppleToken } from "../utils/AppleOAuth";
 
 interface IAuthRequest extends Request {
   body: {
@@ -14,7 +15,7 @@ interface IAuthRequest extends Request {
     password?: string;
     confirmPassword?: string;
     otp?: string;
-    provider?: "email" | "google" | "facebook";
+    provider?: "email" | "google" | "facebook" | "apple";
     providerId?: string;
     phone?: string;
     profileImage?: string;
@@ -24,6 +25,13 @@ interface IAuthRequest extends Request {
 interface IGoogleAuthRequest extends Request {
   body: {
     idToken: string;
+  };
+}
+
+interface IAppleAuthRequest extends Request {
+  body: {
+    idToken: string;
+    name?: string;
   };
 }
 
@@ -39,6 +47,12 @@ declare module "express-serve-static-core" {
 interface IGoogleSocialData {
   idToken: string;
   photo?: string;
+}
+
+interface IAppleSocialData {
+  idToken: string;
+  photo?: string;
+  name?: string;
 }
 
 const OTP_EXPIRY_MINUTES = 10;
@@ -848,5 +862,165 @@ export const resendOTP = async (
   } catch (err: any) {
     console.error("Resend OTP error:", err);
     res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+export const createOrUpdateAppleAuth = async (
+  data: IAppleSocialData,
+  userId?: Types.ObjectId
+): Promise<{ user: IUserDocument; auth: IAuth }> => {
+  const { email, appleId } = await verifyAppleToken(data.idToken);
+
+  const resolvedEmail = email || `${appleId}@apple.user`;
+
+  // Find or create user
+  let user: IUserDocument | null = null;
+
+  if (userId) {
+    user = await User.findById(userId);
+  } else {
+    user = await User.findOne({ email: resolvedEmail });
+    if (!user) {
+      user = await User.create({
+        name: data.name || "Apple User",
+        email: resolvedEmail,
+        role: "agent",
+        profileImage: data.photo || "",
+      });
+    }
+  }
+
+  if (!user) throw new Error("User profile creation failed unexpectedly.");
+
+  const auth = await Auth.findOneAndUpdate(
+    { 
+      user: user._id,
+      provider: "apple"
+    },
+    {
+      providerId: appleId,
+      isVerified: true
+    },
+    {
+      upsert: true,
+      new: true,
+      setDefaultsOnInsert: true
+    }
+  );
+
+  return { user, auth };
+};
+
+export const appleAuthCallback = async (
+  req: IAppleAuthRequest, 
+  res: Response
+): Promise<void> => {
+  try {
+    const { idToken, name } = req.body;
+
+    if (!idToken) {
+      res.status(400).json({ success: false, message: "Missing Apple ID token." });
+      return;
+    }
+
+    let appleUser;
+    try {
+      appleUser = await verifyAppleToken(idToken);
+      console.log("Apple user verified:", {
+        email: appleUser.email,
+        appleId: appleUser.appleId
+      });
+    } catch (verifyError) {
+      console.error("Token verification failed:", verifyError);
+      res.status(401).json({ 
+        success: false, 
+        message: "Invalid Apple token. Please try again." 
+      });
+      return;
+    }
+
+    const resolvedEmail = appleUser.email || `${appleUser.appleId}@apple.user`;
+
+    const existingUser = await User.findOne({ email: resolvedEmail });
+    console.log("Existing User found:", existingUser?._id);
+
+    if (existingUser) {
+      const existingAuth = await Auth.findOne({ user: existingUser._id });
+      console.log("Existing Auth found:", existingAuth);
+      
+      if (existingAuth) {
+        if (existingAuth.provider !== "apple") {
+          res.status(409).json({ 
+            success: false, 
+            message: `Email already registered with ${existingAuth.provider}/password. Please login using that provider.` 
+          });
+          return;
+        }
+
+        if (!(existingUser as any).trialStartAt) {
+          const now = new Date();
+          (existingUser as any).trialStartAt = now;
+          (existingUser as any).trialEndsAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+          await existingUser.save();
+        }
+        
+        const token = generateToken({ id: existingUser._id, role: existingUser.role });
+        
+        res.status(200).json({
+          success: true,
+          message: "Login successful via Apple",
+          token,
+          user: {
+            id: existingUser._id,
+            name: existingUser.name,
+            email: existingUser.email,
+            role: existingUser.role,
+            photo: existingUser.profileImage,
+            provider: "apple",
+            trialStartAt: (existingUser as any).trialStartAt,
+            trialEndsAt: (existingUser as any).trialEndsAt,
+            isTrial: (existingUser as any).isTrial,
+          }
+        });
+        return;
+      }
+    }
+
+    const { user, auth } = await createOrUpdateAppleAuth({ idToken, name });
+    
+    if (!user) {
+      res.status(500).json({ success: false, message: "User creation failed." });
+      return;
+    }
+
+    if (!(user as any).trialStartAt) {
+      const now = new Date();
+      (user as any).trialStartAt = now;
+      (user as any).trialEndsAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+      await user.save();
+    }
+
+    const token = generateToken({ id: user._id, role: user.role });
+
+    res.status(200).json({
+      success: true,
+      message: "Login successful via Apple",
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        photo: user.profileImage,
+        provider: "apple",
+        trialStartAt: (user as any).trialStartAt,
+        trialEndsAt: (user as any).trialEndsAt,
+        isTrial: (user as any).isTrial,
+      }
+    });
+
+  } catch (error: any) {
+    console.error("Apple login error:", error);
+    res.status(500).json({ success: false, message: error.message || "Internal Server Error" });
   }
 };
