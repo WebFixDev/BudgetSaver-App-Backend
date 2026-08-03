@@ -3,6 +3,10 @@ import { Request, Response, NextFunction } from "express";
 import User, { IUser } from "../models/user.model";
 import { ObjectId } from "mongodb";
 import { ErrorResponse } from "../utils/errorResponse";
+import Project from "../models/project.model";
+import Party from "../models/party.model";
+import Transaction from "../models/transaction.model";
+import Auth from "../models/auth.model";
 
 
 // Get all users (admin only)
@@ -645,6 +649,51 @@ export const getUserStatistics = async (
     res.status(200).json({
       success: true,
       data: stats
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Delete current user (Self account deletion)
+export const deleteCurrentUser = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const userId = (req as any).user?.id;
+    if (!userId) {
+      return next(new ErrorResponse('Not authorized to access this route', 401));
+    }
+
+    // 1. Find all projects created by this user
+    const projects = await Project.find({ createdBy: userId });
+    const projectIds = projects.map(p => p._id);
+
+    // 2. Delete all parties associated with these projects
+    if (projectIds.length > 0) {
+      await Party.deleteMany({ project: { $in: projectIds } });
+    }
+
+    // 3. Delete all projects created by this user
+    await Project.deleteMany({ createdBy: userId });
+
+    // 4. Delete all transactions created by this user
+    await Transaction.deleteMany({ createdBy: userId });
+
+    // 5. Delete all auth credentials for this user
+    await Auth.deleteMany({ user: userId });
+
+    // 6. Delete the user document itself
+    const user = await User.findByIdAndDelete(userId);
+    if (!user) {
+      return next(new ErrorResponse('User not found', 404));
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Account and all associated data deleted successfully'
     });
   } catch (error) {
     next(error);

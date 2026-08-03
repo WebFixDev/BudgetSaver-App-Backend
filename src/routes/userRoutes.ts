@@ -10,6 +10,7 @@ import {
   deleteUser,
   toggleUserStatus,
   getUserStatistics,
+  deleteCurrentUser,
 } from '../controllers/userController';
 import { verifyTokenMiddleware, authorize } from '../middleware/authMiddleware';
 
@@ -20,6 +21,7 @@ router.use(verifyTokenMiddleware);
 
 router.get('/me', getCurrentUser);
 router.put('/me', updateCurrentUser);
+router.delete('/me', deleteCurrentUser);
 
 router.get('/', authorize(['admin']), getAllUsers);
 router.get('/stats', authorize(['admin']), getUserStatistics);
