@@ -44,20 +44,6 @@ export const createParty = async (
     }
 
 
-    if (req.user?.id) {
-      const currentUser = await User.findById(req.user.id);
-      
-      if (currentUser && !currentUser.isPro) {
-        // Is specific project ke andar total parties count karein
-        const partyCount = await Party.countDocuments({ project: projectId });
-        
-        // Agar 10 parties ban chuki hain (aap isay 5 bhi kar sakte hain)
-        if (partyCount >= 10) {
-          return next(new ErrorResponse('Free plan limit reached. Please upgrade to Pro to add unlimited clients and vendors.', 403));
-        }
-      }
-    }
-
     // Check if party with same name already exists in same project
     const existingParty = await Party.findOne({ 
       project: projectId, 
