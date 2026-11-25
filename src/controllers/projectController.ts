@@ -2,6 +2,7 @@
 import { Request, Response, NextFunction } from 'express';
 import Project, { IProject } from '../models/project.model';
 import Party from '../models/party.model';
+import Transaction from '../models/transaction.model';
 import { ObjectId } from 'mongodb';
 import { ErrorResponse } from '../utils/errorResponse';
 import User from '../models/user.model';
@@ -426,7 +427,6 @@ export const createProject = async (
       title,
       description,
       projectImage,
-      currency = 'USD',
       initialBudget = 0,
       status = 'ACTIVE',
       startDate,
@@ -454,49 +454,49 @@ export const createProject = async (
       return next(new ErrorResponse('Invalid status value', 400));
     }
 
-    // Generate project code: first 3 letters of title + sequence number
-    const titleWords = title.trim().split(' ').filter((word : string) => word.length > 0);
+    // Generate project code: first 2-3 letters of title + sequence number
+    const titleWords = title.trim().split(' ').filter((word: string) => word.length > 0);
     
-    // Get first 3 characters from title
-    let codePrefix = '';
+    let codePrefix = 'PR';
     if (titleWords.length > 0) {
-      const firstWord = titleWords[0];
-      codePrefix = firstWord.substring(0, 2).toUpperCase();
+      const cleanWord = titleWords[0].replace(/[^a-zA-Z]/g, '');
+      if (cleanWord.length >= 2) {
+        codePrefix = cleanWord.substring(0, 2).toUpperCase();
+      } else if (cleanWord.length === 1) {
+        codePrefix = (cleanWord + 'X').toUpperCase();
+      }
     }
 
-    // Find the latest project code with same prefix to get next sequence number
+    const userIdFilter = req.user?.id ? { createdBy: req.user.id } : {};
+
+    // Find latest project code with same prefix for this user
     const regex = new RegExp(`^${codePrefix}(\\d+)$`);
-    const latestProject = await Project.findOne({
-      code: { $regex: regex }
-    }).sort({ code: -1 }).limit(2);
+    const matchingProjects = await Project.find({
+      code: { $regex: regex },
+      ...userIdFilter
+    }).select('code').lean();
 
-    let sequenceNumber = 1;
-    if (latestProject && latestProject.code) {
-      // Extract sequence number from latest code
-      const match = latestProject.code.match(regex);
+    let maxSeq = 0;
+    for (const p of matchingProjects) {
+      const match = p.code ? p.code.match(regex) : null;
       if (match && match[1]) {
-        sequenceNumber = parseInt(match[1]) + 1;
+        const num = parseInt(match[1], 10);
+        if (num > maxSeq) maxSeq = num;
       }
     }
 
-    // Generate final code
-    const formattedCode = `${codePrefix}${sequenceNumber.toString().padStart(2, '0')}`;
+    let sequenceNumber = maxSeq + 1;
+    let formattedCode = `${codePrefix}${sequenceNumber.toString().padStart(2, '0')}`;
 
-    // Check if project code already exists (just in case)
-    const existingProject = await Project.findOne({ code: formattedCode });
-    if (existingProject) {
-      // If by chance code exists, increment sequence number
+    // Ensure final code is strictly unique for this user
+    for (let i = 0; i < 50; i++) {
+      const conflict = await Project.findOne({
+        code: formattedCode,
+        ...userIdFilter
+      });
+      if (!conflict) break;
       sequenceNumber++;
-      const newCode = `${codePrefix}${sequenceNumber.toString().padStart(2, '0')}`;
-      // Recursively check until we find unique code (max 10 attempts)
-      for (let i = 0; i < 10; i++) {
-        const checkProject = await Project.findOne({ code: newCode });
-        if (!checkProject) {
-          break;
-        }
-        sequenceNumber++;
-      }
-      return next(new ErrorResponse(`Generated project code conflict. Please try again.`, 409));
+      formattedCode = `${codePrefix}${sequenceNumber.toString().padStart(2, '0')}`;
     }
 
     // Validate dates
@@ -530,7 +530,6 @@ export const createProject = async (
       initialBudget,
       projectImage,
       status,
-      currency,
       startDate: startDateObj,
       endDate: endDateObj,
     };
@@ -696,7 +695,7 @@ if (updateData.currencySymbol !== undefined) {
   }
 };
 
-// Delete project
+// Delete project (cascade delete all parties and transactions)
 export const deleteProject = async (
   req: Request, 
   res: Response, 
@@ -715,26 +714,20 @@ export const deleteProject = async (
       return next(new ErrorResponse('Project not found', 404));
     }
 
-    // Check if project has any parties
-    const partiesCount = await Party.countDocuments({ project: id });
-    
-    if (partiesCount > 0) {
-      return next(new ErrorResponse(
-        `Cannot delete project. It has ${partiesCount} associated parties. Delete parties first or use force delete.`,
-        400
-      ));
-    }
-
-    // Delete the project
+    // Cascade delete transactions, parties, and the project
+    const deletedTx = await Transaction.deleteMany({ project: id });
+    const deleteParties = await Party.deleteMany({ project: id });
     await Project.findByIdAndDelete(id);
 
     res.status(200).json({
       success: true,
-      message: 'Project deleted successfully',
+      message: 'Project and all associated data deleted successfully',
       data: {
         id: project._id,
         title: project.title,
-        code: project.code
+        code: project.code,
+        partiesDeleted: deleteParties.deletedCount,
+        transactionsDeleted: deletedTx.deletedCount,
       }
     });
   } catch (error) {
@@ -742,7 +735,7 @@ export const deleteProject = async (
   }
 };
 
-// Force delete project (with all parties)
+// Force delete project (with all parties and transactions)
 export const forceDeleteProject = async (
   req: Request, 
   res: Response, 
@@ -761,22 +754,22 @@ export const forceDeleteProject = async (
       return next(new ErrorResponse('Project not found', 404));
     }
 
-    // Delete all parties associated with this project
+    // Cascade delete transactions, parties, and the project
+    const deletedTx = await Transaction.deleteMany({ project: id });
     const deleteResult = await Party.deleteMany({ project: id });
-
-    // Delete the project
     await Project.findByIdAndDelete(id);
 
     res.status(200).json({
       success: true,
-      message: 'Project and all associated parties deleted successfully',
+      message: 'Project and all associated parties and transactions deleted successfully',
       data: {
         project: {
           id: project._id,
           title: project.title,
           code: project.code
         },
-        partiesDeleted: deleteResult.deletedCount
+        partiesDeleted: deleteResult.deletedCount,
+        transactionsDeleted: deletedTx.deletedCount,
       }
     });
   } catch (error) {

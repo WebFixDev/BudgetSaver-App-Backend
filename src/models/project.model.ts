@@ -10,7 +10,7 @@ export interface IProject extends Document {
   totalIncome: number;
   totalExpense: number;
   balance: number;
-  currency: string;
+  currency?: string;
   status: 'PLANNED' | 'ACTIVE' | 'COMPLETED' | 'ON_HOLD';
   createdBy: ObjectId; // Changed from optional to required
   projectImage?: string;
@@ -40,9 +40,9 @@ const ProjectSchema: Schema = new Schema({
     trim: true,
     maxlength: 1000
   },
-    currency: { 
+  currency: { 
     type: String, 
-    default: 'USD',
+    required: false,
     trim: true 
   },
   initialBudget: { 

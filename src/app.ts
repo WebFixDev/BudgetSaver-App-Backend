@@ -24,7 +24,7 @@ app.use(morgan("dev"));
 
 // ✅ Test Route
 app.get("/", (req: Request, res: Response) => {
-  res.send("Insurance Agent Backend is Running 🚀");
+  res.send("Budget Expense Planner Backend is Running 🚀");
 });
 
 // ✅ API Routes

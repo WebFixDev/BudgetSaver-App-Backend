@@ -27,7 +27,7 @@ export const sendEmail = async (options: EmailOptions): Promise<void> => {
     await transporter.verify();
 
     await transporter.sendMail({
-      from: `"Insurance App" <${process.env.SMTP_USER}>`,
+      from: `"Budget Expense Planner" <${process.env.SMTP_USER}>`,
       to: options.to,
       subject: options.subject,
       text: options.text,
